@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Management System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://kit.fontawesome.com/a2e0ad1c2c.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <!-- Header -->
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-gray-800">Event Management</h1>
+    <div class="space-x-2">
+      <button id="loginBtn" class="px-4 py-2 bg-blue-600 text-white rounded">Login</button>
+      <button id="registerBtn" class="px-4 py-2 bg-green-600 text-white rounded">Register</button>
+      <button id="logoutBtn" class="px-4 py-2 bg-red-600 text-white rounded hidden">Logout</button>
+    </div>
+  </header>
+
+  <!-- Main Section -->
+  <main id="mainContent" class="p-6"></main>
+
+  <script>
+    let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+
+    function renderHome() {
+      document.getElementById("mainContent").innerHTML = `
+        <div class="text-center mt-10">
+          <h2 class="text-xl font-semibold mb-2">Welcome to Event Management System</h2>
+          ${currentUser ? `<p class="text-green-600">Logged in as <strong>${currentUser.username}</strong> (${currentUser.role})</p>` : `<p class="text-gray-600">Please login or register to continue.</p>`}
+        </div>
+      `;
+    }
+
+    function renderRegisterForm() {
+      document.getElementById("mainContent").innerHTML = `
+        <h2 class="text-xl font-bold mb-4">Register</h2>
+        <form id="registerForm" class="space-y-4 max-w-md">
+          <input type="text" name="username" placeholder="Username" required class="w-full border px-3 py-2 rounded" />
+          <input type="email" name="email" placeholder="Email" required class="w-full border px-3 py-2 rounded" />
+          <input type="password" name="password" placeholder="Password" required class="w-full border px-3 py-2 rounded" />
+          <select name="role" class="w-full border px-3 py-2 rounded">
+            <option value="student">Student</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Register</button>
+        </form>
+      `;
+
+      document.getElementById("registerForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const users = JSON.parse(localStorage.getItem("users")) || [];
+        const username = form.username.value.trim();
+        if (users.some(u => u.username === username)) return alert("Username already exists.");
+        users.push({
+          username,
+          email: form.email.value.trim(),
+          password: form.password.value,
+          role: form.role.value,
+          registeredAt: new Date().toLocaleString()
+        });
+        localStorage.setItem("users", JSON.stringify(users));
+        alert("Registration successful!");
+        renderHome();
+      });
+    }
+
+    function renderLoginForm() {
+      document.getElementById("mainContent").innerHTML = `
+        <h2 class="text-xl font-bold mb-4">Login</h2>
+        <form id="loginForm" class="space-y-4 max-w-md">
+          <input type="text" name="username" placeholder="Username" required class="w-full border px-3 py-2 rounded" />
+          <input type="password" name="password" placeholder="Password" required class="w-full border px-3 py-2 rounded" />
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Login</button>
+        </form>
+      `;
+
+      document.getElementById("loginForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const { username, password } = e.target;
+        const users = JSON.parse(localStorage.getItem("users")) || [];
+        const user = users.find(u => u.username === username.value && u.password === password.value);
+        if (!user) return alert("Invalid credentials");
+        localStorage.setItem("currentUser", JSON.stringify(user));
+        currentUser = user;
+        document.getElementById("logoutBtn").classList.remove("hidden");
+        renderDashboard();
+      });
+    }
+
+    function renderDashboard() {
+      if (!currentUser) return renderHome();
+      const role = currentUser.role;
+      if (role === "admin") {
+        renderAdminDashboard();
+      } else {
+        renderStudentDashboard();
+      }
+    }
+
+    function renderAdminDashboard() {
+      document.getElementById("mainContent").innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Admin Dashboard</h2>
+        <button onclick="renderAddEventForm()" class="bg-indigo-600 text-white px-4 py-2 rounded mr-2">Add Event</button>
+        <button onclick="renderEventList('admin')" class="bg-gray-700 text-white px-4 py-2 rounded mr-2">List Events</button>
+        <button onclick="renderUserList()" class="bg-yellow-500 text-white px-4 py-2 rounded">View Users</button>
+        <div id="dashboardContent" class="mt-4"></div>
+      `;
+    }
+
+    function renderStudentDashboard() {
+      document.getElementById("mainContent").innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Student Dashboard</h2>
+        <button onclick="renderEventList('student')" class="bg-green-600 text-white px-4 py-2 rounded mr-2">View Events</button>
+        <button onclick="renderMyEvents()" class="bg-teal-600 text-white px-4 py-2 rounded">My Registered Events</button>
+        <div id="dashboardContent" class="mt-4"></div>
+      `;
+    }
+
+    function renderAddEventForm() {
+      document.getElementById("dashboardContent").innerHTML = `
+        <h3 class="text-xl font-semibold mb-2">Create New Event</h3>
+        <form id="eventForm" class="space-y-4">
+          <input type="text" name="title" placeholder="Event Title" required class="w-full border px-3 py-2 rounded" />
+          <textarea name="description" placeholder="Event Description" required class="w-full border px-3 py-2 rounded"></textarea>
+          <input type="date" name="date" required class="w-full border px-3 py-2 rounded" />
+          <input type="text" name="department" placeholder="Department" required class="w-full border px-3 py-2 rounded" />
+          <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded">Save Event</button>
+        </form>
+      `;
+      document.getElementById("eventForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const events = JSON.parse(localStorage.getItem("events")) || [];
+        events.push({
+          title: form.title.value,
+          description: form.description.value,
+          date: form.date.value,
+          department: form.department.value,
+          createdBy: currentUser.username
+        });
+        localStorage.setItem("events", JSON.stringify(events));
+        alert("Event added!");
+        renderEventList("admin");
+      });
+    }
+
+    function renderEventList(role) {
+      const events = JSON.parse(localStorage.getItem("events")) || [];
+      const registrations = JSON.parse(localStorage.getItem("registrations")) || {};
+      let html = `
+        <div class="mb-4">
+          <input type="text" id="searchInput" placeholder="Search by department or title..." class="w-full border px-3 py-2 rounded" />
+        </div>
+      `;
+      html += events.map((ev, idx) => {
+        const isRegistered = registrations[currentUser?.username]?.includes(idx);
+        return `
+          <div class="border p-4 rounded shadow-sm bg-white mb-2">
+            <h4 class="font-bold">${ev.title}</h4>
+            <p>${ev.description}</p>
+            <p class="text-sm text-gray-500">${ev.date} | ${ev.department}</p>
+            ${role === 'admin' ? `<button onclick="deleteEvent(${idx})" class="mt-2 text-red-600">Delete</button>` :
+              `<button onclick="registerForEvent(${idx})" class="mt-2 text-blue-600" ${isRegistered ? 'disabled' : ''}>${isRegistered ? 'Registered' : 'Register'}</button>`}
+          </div>`;
+      }).join("");
+      document.getElementById("dashboardContent").innerHTML = html || "<p>No events found.</p>";
+
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        const keyword = e.target.value.toLowerCase();
+        const filtered = events
+          .map((ev, idx) => ({ ...ev, index: idx }))
+          .filter(ev => ev.title.toLowerCase().includes(keyword) || ev.department.toLowerCase().includes(keyword));
+        document.getElementById("dashboardContent").innerHTML = filtered.map(ev => `
+          <div class="border p-4 rounded shadow-sm bg-white mb-2">
+            <h4 class="font-bold">${ev.title}</h4>
+            <p>${ev.description}</p>
+            <p class="text-sm text-gray-500">${ev.date} | ${ev.department}</p>
+            ${role === 'admin' ? `<button onclick="deleteEvent(${ev.index})" class="mt-2 text-red-600">Delete</button>` :
+              `<button onclick="registerForEvent(${ev.index})" class="mt-2 text-blue-600">Register</button>`}
+          </div>
+        `).join("");
+      });
+    }
+
+    function deleteEvent(index) {
+      let events = JSON.parse(localStorage.getItem("events")) || [];
+      if (confirm("Delete this event?")) {
+        events.splice(index, 1);
+        localStorage.setItem("events", JSON.stringify(events));
+        renderEventList("admin");
+      }
+    }
+
+    function registerForEvent(index) {
+      const registrations = JSON.parse(localStorage.getItem("registrations")) || {};
+      if (!registrations[currentUser.username]) registrations[currentUser.username] = [];
+      if (!registrations[currentUser.username].includes(index)) {
+        registrations[currentUser.username].push(index);
+        localStorage.setItem("registrations", JSON.stringify(registrations));
+        alert("Registered for event!");
+        renderEventList("student");
+      }
+    }
+
+    function renderMyEvents() {
+      const events = JSON.parse(localStorage.getItem("events")) || [];
+      const registrations = JSON.parse(localStorage.getItem("registrations")) || {};
+      const myEvents = (registrations[currentUser.username] || []).map(idx => events[idx]);
+      const html = myEvents.map(ev => `
+        <div class="border p-4 rounded shadow-sm bg-white mb-2">
+          <h4 class="font-bold">${ev.title}</h4>
+          <p>${ev.description}</p>
+          <p class="text-sm text-gray-500">${ev.date} | ${ev.department}</p>
+        </div>
+      `).join("");
+      document.getElementById("dashboardContent").innerHTML = html || "<p>You have not registered for any events yet.</p>";
+    }
+
+    function renderUserList() {
+      const users = JSON.parse(localStorage.getItem("users")) || [];
+      let html = `
+        <table class="w-full text-sm border">
+          <thead class="bg-gray-200">
+            <tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>Registered</th></tr>
+          </thead><tbody>
+      ` + users.map((u, i) => `
+        <tr class="border"><td>${i+1}</td><td>${u.username}</td><td>${u.email}</td><td>${u.role}</td><td>${u.registeredAt}</td></tr>
+      `).join("") + `</tbody></table>`;
+      document.getElementById("dashboardContent").innerHTML = html;
+    }
+
+    // Event Listeners
+    document.getElementById("registerBtn").addEventListener("click", renderRegisterForm);
+    document.getElementById("loginBtn").addEventListener("click", renderLoginForm);
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("currentUser");
+      currentUser = null;
+      document.getElementById("logoutBtn").classList.add("hidden");
+      renderHome();
+    });
+
+    if (currentUser) document.getElementById("logoutBtn").classList.remove("hidden");
+    currentUser ? renderDashboard() : renderHome();
+  </script>
+</body>
+</html>
